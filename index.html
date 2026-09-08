@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Keuangan - kasFaimid</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #1e293b;
+            --primary-light: #334155;
+            --accent: #0f766e;
+            --accent-hover: #0d9488;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --radius: 10px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        html, body { max-width: 100%; overflow-x: hidden; background-color: var(--bg-body); color: var(--text-main); }
+        body { display: flex; min-height: 100vh; }
+
+        .sidebar-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(2px); z-index: 99;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px; background-color: var(--primary); color: #fff;
+            display: flex; flex-direction: column; position: fixed; height: 100vh;
+            left: 0; top: 0; z-index: 100; transition: transform 0.3s ease;
+        }
+        .sidebar-brand {
+            padding: 24px 20px; font-size: 1.25rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--primary-light); color: #fff;
+        }
+        .sidebar-brand-title { display: flex; align-items: center; gap: 12px; }
+        .sidebar-brand i { color: #38bdf8; }
+        .sidebar-close-btn { display: none; background: none; border: none; color: #94a3b8; font-size: 1.25rem; cursor: pointer; }
+        .sidebar-menu { list-style: none; padding: 20px 10px; flex: 1; overflow-y: auto; }
+        .sidebar-menu li { margin-bottom: 6px; }
+        .sidebar-menu a {
+            display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+            color: #94a3b8; text-decoration: none; font-weight: 500; border-radius: var(--radius); transition: all 0.2s;
+        }
+        .sidebar-menu a:hover, .sidebar-menu a.active { background-color: var(--primary-light); color: #fff; }
+        .sidebar-menu a.active { border-left: 4px solid #38bdf8; }
+        .user-profile { padding: 16px 20px; border-top: 1px solid var(--primary-light); display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #38bdf8; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+        .user-info h4 { font-size: 0.9rem; color: #fff; }
+        .user-info p { font-size: 0.75rem; color: #94a3b8; }
+
+        /* MAIN CONTENT */
+        .main-content { margin-left: 260px; flex: 1; padding: 24px; width: calc(100% - 260px); max-width: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 15px; flex-wrap: wrap; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .menu-toggle { display: none; background: #fff; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius); cursor: pointer; font-size: 1.1rem; color: var(--primary); }
+        .header-title h1 { font-size: 1.35rem; font-weight: 700; color: var(--primary); }
+        .header-title p { font-size: 0.85rem; color: var(--text-muted); }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+        .form-select {
+            padding: 9px 14px; border-radius: var(--radius); border: 1px solid var(--border-color);
+            background-color: #fff; font-size: 0.85rem; font-weight: 600; color: var(--primary); outline: none; cursor: pointer;
+        }
+
+        .btn { padding: 10px 16px; border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; text-decoration: none; }
+        .btn-outline { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-outline:hover { background-color: #f1f5f9; }
+
+        /* KPI Cards */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background-color: var(--bg-card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); width: 100%; }
+        .metric-card { display: flex; justify-content: space-between; align-items: flex-start; }
+        .metric-info p { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; }
+        .metric-info h2 { font-size: 1.35rem; font-weight: 700; color: var(--primary); word-break: break-word; }
+        .metric-icon { width: 44px; height: 44px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .icon-income { background-color: #dcfce7; color: var(--success); }
+        .icon-expense { background-color: #fee2e2; color: var(--danger); }
+        .icon-balance { background-color: #e0f2fe; color: #0284c7; }
+        .icon-asset { background-color: #fef3c7; color: var(--warning); }
+        .trend { margin-top: 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px; }
+        .trend.positive { color: var(--success); }
+        .trend.negative { color: var(--danger); }
+
+        /* CHARTS */
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .chart-header h3 { font-size: 1rem; color: var(--primary); }
+        .chart-container { position: relative; height: 280px; width: 100%; }
+
+        /* TABLES */
+        .table-card { padding: 20px; }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+        .search-box { position: relative; width: 100%; max-width: 280px; }
+        .search-box input { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border-color); border-radius: var(--radius); outline: none; font-size: 0.85rem; background-color: #ffffff; }
+        .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+
+        .desktop-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .desktop-table th { background-color: #f8fafc; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 14px; border-bottom: 1px solid var(--border-color); }
+        .desktop-table td { padding: 14px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
+
+        .badge { padding: 4px 8px; border-radius: 50px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .badge-success { background-color: #dcfce7; color: var(--success); }
+        .badge-danger { background-color: #fee2e2; color: var(--danger); }
+        .badge-warning { background-color: #fef3c7; color: var(--warning); }
+
+        .mobile-trx-list { display: none; flex-direction: column; gap: 12px; }
+        .trx-item-card { background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+        .trx-item-header, .trx-item-body { display: flex; justify-content: space-between; align-items: center; }
+        .trx-desc { font-weight: 600; font-size: 0.9rem; color: var(--primary); }
+        .trx-meta { font-size: 0.75rem; color: var(--text-muted); }
+        .trx-amount { font-weight: 700; font-size: 0.95rem; }
+        .empty-state { text-align: center; padding: 20px; color: var(--text-muted); }
+
+        @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .sidebar-close-btn { display: block; }
+            .sidebar-overlay.active { display: block; }
+            .main-content { margin-left: 0; width: 100%; padding: 16px; }
+            .menu-toggle { display: block; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; }
+            .header-actions select, .header-actions .btn { flex: 1; }
+            .search-box { max-width: 100%; }
+            .desktop-table { display: none; }
+            .mobile-trx-list { display: flex; }
+            .chart-container { height: 240px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-title">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Kasfaimid</span>
+            </div>
+            <button class="sidebar-close-btn" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="index.html" class="active"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="perusahaan.html"><i class="fa-solid fa-building"></i> Data Perusahaan</a></li>
+            <li><a href="admin.html"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</a></li>
+        </ul>
+        <div class="user-profile">
+            <div class="user-avatar">AD</div>
+            <div class="user-info">
+                <h4>PT ASCON INOVASI DATA</h4>
+                <p>laporan keuangan</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="header-title">
+                    <h1>Laporan Keuangan Perusahaan</h1>
+                    <p id="periodText">Periode: Memuat...</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <!-- Filter Berdasarkan PT -->
+                <select id="companyFilter" class="form-select">
+                    <option value="ALL">-- Semua PT / Perusahaan --</option>
+                </select>
+                <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-download"></i> Ekspor PDF</button>
+            </div>
+        </header>
+
+        <!-- KPI / METRICS -->
+        <section class="metrics-grid">
+            <div class="card metric-card">
+                <div class="metric-info">
+                    <p>Total Pemasukan</p>
+                    <h2 id="totalIncome">Rp 0</h2>
+                    <span class="trend positive"><i class="fa-solid fa-arrow-up"></i> Realtime</span>
+                </div>
+                <div class="metric-icon icon-income"><i class="fa-solid fa-arrow-down-left"></i></div>
+            </div>
+
+            <div class="card metric-card">
+                <div class="metric-info">
+                    <p>Total Pengeluaran</p>
+                    <h2 id="totalExpense">Rp 0</h2>
+                    <span class="trend negative"><i class="fa-solid fa-arrow-down"></i> Realtime</span>
+                </div>
+                <div class="metric-icon icon-expense"><i class="fa-solid fa-arrow-up-right"></i></div>
+            </div>
+
+            <div class="card metric-card">
+                <div class="metric-info">
+                    <p>Laba Bersih</p>
+                    <h2 id="netProfit">Rp 0</h2>
+                    <span class="trend positive" id="profitTrend"><i class="fa-solid fa-scale-balanced"></i> Realtime</span>
+                </div>
+                <div class="metric-icon icon-balance"><i class="fa-solid fa-scale-balanced"></i></div>
+            </div>
+
+            <div class="card metric-card">
+                <div class="metric-info">
+                    <p>Total Transaksi</p>
+                    <h2 id="totalCount">0</h2>
+                    <span class="trend positive"><i class="fa-solid fa-circle-check"></i> Terdaftar</span>
+                </div>
+                <div class="metric-icon icon-asset"><i class="fa-solid fa-receipt"></i></div>
+            </div>
+        </section>
+
+        <!-- CHARTS SECTION -->
+        <section class="charts-grid">
+            <div class="card">
+                <div class="chart-header">
+                    <h3>Arus Kas Bulanan</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cashFlowChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="chart-header">
+                    <h3>Kategori Pengeluaran</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="expenseCategoryChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRANSACTION SECTION -->
+        <section class="card table-card">
+            <div class="table-header">
+                <h3>Transaksi Terakhir</h3>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchInput" placeholder="Cari transaksi...">
+                </div>
+            </div>
+
+            <!-- TABEL DESKTOP -->
+            <table class="desktop-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nama PT</th>
+                        <th>Tanggal</th>
+                        <th>Keterangan</th>
+                        <th>Kategori</th>
+                        <th>Jenis</th>
+                        <th>Jumlah</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTableBody">
+                    <tr><td colspan="8" class="empty-state">Memuat data dari Firebase...</td></tr>
+                </tbody>
+            </table>
+
+            <!-- LIST MOBILE -->
+            <div class="mobile-trx-list" id="transactionMobileList">
+                <div class="empty-state">Memuat data dari Firebase...</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+    </script>
+
+    <!-- FIREBASE MODULE SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDun1SSeSjVe8ztFl8P_TzBXhfUYk1K7FM",
+            authDomain: "laporan-19814.firebaseapp.com",
+            projectId: "laporan-19814",
+            storageBucket: "laporan-19814.firebasestorage.app",
+            messagingSenderId: "420276873621",
+            appId: "1:420276873621:web:5f0daeb7d99961218fee9c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let cashFlowChart, expenseCategoryChart;
+        let allTransactions = [];
+        let currentSelectedCompany = 'ALL';
+
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+        }
+
+        function formatDate(dateObj) {
+            if (!dateObj) return '-';
+            let d = dateObj.seconds ? new Date(dateObj.seconds * 1000) : new Date(dateObj);
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('cashFlowChart').getContext('2d');
+            cashFlowChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    datasets: [
+                        { label: 'Pemasukan', data: Array(12).fill(0), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 },
+                        { label: 'Pengeluaran', data: Array(12).fill(0), borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)', fill: true, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { ticks: { callback: (val) => 'Rp ' + (val / 1000000).toFixed(0) + ' Jt' } } }
+                }
+            });
+
+            const ctx2 = document.getElementById('expenseCategoryChart').getContext('2d');
+            expenseCategoryChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#1e293b', '#0f766e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function populateCompanyFilter(transactions) {
+            const select = document.getElementById('companyFilter');
+            const companies = new Set();
+
+            transactions.forEach(trx => {
+                if (trx.companyName) companies.add(trx.companyName);
+            });
+
+            // Simpan pilihan saat ini jika ada
+            const currentVal = select.value;
+            select.innerHTML = '<option value="ALL">-- Semua PT / Perusahaan --</option>';
+            
+            companies.forEach(company => {
+                const opt = document.createElement('option');
+                opt.value = company;
+                opt.textContent = company;
+                select.appendChild(opt);
+            });
+
+            select.value = currentVal;
+        }
+
+        function listenToTransactions() {
+            const q = query(collection(db, "transactions"), orderBy("date", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                allTransactions = [];
+                snapshot.forEach((doc) => {
+                    allTransactions.push({ id: doc.id, ...doc.data() });
+                });
+
+                populateCompanyFilter(allTransactions);
+                applyFilterAndRender();
+            }, (error) => {
+                console.error("Gagal mengambil data dari Firebase: ", error);
+            });
+        }
+
+        function applyFilterAndRender() {
+            let filtered = allTransactions;
+            if (currentSelectedCompany !== 'ALL') {
+                filtered = allTransactions.filter(t => t.companyName === currentSelectedCompany);
+            }
+
+            const searchKey = document.getElementById('searchInput').value.toLowerCase();
+            if (searchKey) {
+                filtered = filtered.filter(trx => 
+                    (trx.description && trx.description.toLowerCase().includes(searchKey)) ||
+                    (trx.category && trx.category.toLowerCase().includes(searchKey)) ||
+                    (trx.companyName && trx.companyName.toLowerCase().includes(searchKey)) ||
+                    (trx.code && trx.code.toLowerCase().includes(searchKey))
+                );
+            }
+
+            updateDashboard(filtered);
+        }
+
+        function updateDashboard(transactions) {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let monthlyIncome = Array(12).fill(0);
+            let monthlyExpense = Array(12).fill(0);
+            let expenseCategories = {};
+
+            transactions.forEach(trx => {
+                const amount = Number(trx.amount) || 0;
+                const type = (trx.type || '').toLowerCase();
+                const isIncome = type === 'in' || type === 'masuk' || type === 'pemasukan';
+                
+                if (isIncome) {
+                    totalIncome += amount;
+                } else {
+                    totalExpense += amount;
+                    const cat = trx.category || 'Lainnya';
+                    expenseCategories[cat] = (expenseCategories[cat] || 0) + amount;
+                }
+
+                if (trx.date) {
+                    const dateObj = trx.date.seconds ? new Date(trx.date.seconds * 1000) : new Date(trx.date);
+                    const monthIndex = dateObj.getMonth();
+                    if (isIncome) monthlyIncome[monthIndex] += amount;
+                    else monthlyExpense[monthIndex] += amount;
+                }
+            });
+
+            document.getElementById('totalIncome').innerText = formatRupiah(totalIncome);
+            document.getElementById('totalExpense').innerText = formatRupiah(totalExpense);
+            document.getElementById('netProfit').innerText = formatRupiah(totalIncome - totalExpense);
+            document.getElementById('totalCount').innerText = transactions.length;
+
+            const now = new Date();
+            document.getElementById('periodText').innerText = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+
+            cashFlowChart.data.datasets[0].data = monthlyIncome;
+            cashFlowChart.data.datasets[1].data = monthlyExpense;
+            cashFlowChart.update();
+
+            const categoryLabels = Object.keys(expenseCategories);
+            const categoryData = Object.values(expenseCategories);
+            expenseCategoryChart.data.labels = categoryLabels.length ? categoryLabels : ['Tidak ada data'];
+            expenseCategoryChart.data.datasets[0].data = categoryData.length ? categoryData : [1];
+            expenseCategoryChart.update();
+
+            renderTableAndCards(transactions);
+        }
+
+        function renderTableAndCards(transactions) {
+            const tbody = document.getElementById('transactionTableBody');
+            const mobileList = document.getElementById('transactionMobileList');
+
+            if (transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Tidak ada data transaksi.</td></tr>`;
+                mobileList.innerHTML = `<div class="empty-state">Tidak ada data transaksi.</div>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            mobileList.innerHTML = '';
+
+            transactions.forEach(trx => {
+                const type = (trx.type || '').toLowerCase();
+                const isIncome = type === 'in' || type === 'masuk' || type === 'pemasukan';
+                const status = trx.status || 'Selesai';
+
+                const badgeTypeClass = isIncome ? 'badge-success' : 'badge-danger';
+                const badgeTypeText = isIncome ? 'Masuk' : 'Keluar';
+
+                let badgeStatusClass = 'badge-success';
+                if (status.toLowerCase() === 'pending') badgeStatusClass = 'badge-warning';
+                else if (status.toLowerCase() === 'batal') badgeStatusClass = 'badge-danger';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>#${trx.code || trx.id.substring(0, 6).toUpperCase()}</strong></td>
+                    <td><strong>${trx.companyName || '-'}</strong></td>
+                    <td>${formatDate(trx.date)}</td>
+                    <td>${trx.description || '-'}</td>
+                    <td>${trx.category || '-'}</td>
+                    <td><span class="badge ${badgeTypeClass}">${badgeTypeText}</span></td>
+                    <td><strong>${formatRupiah(trx.amount || 0)}</strong></td>
+                    <td><span class="badge ${badgeStatusClass}">${status}</span></td>
+                `;
+                tbody.appendChild(tr);
+
+                const card = document.createElement('div');
+                card.className = 'trx-item-card';
+                card.innerHTML = `
+                    <div class="trx-item-header">
+                        <span class="trx-meta"><strong>${trx.companyName || '-'}</strong> • ${formatDate(trx.date)}</span>
+                        <span class="badge ${badgeTypeClass}">${badgeTypeText}</span>
+                    </div>
+                    <div class="trx-desc">${trx.description || '-'}</div>
+                    <div class="trx-item-body">
+                        <span class="trx-meta">${trx.category || '-'}</span>
+                        <span class="trx-amount" style="color: ${isIncome ? 'var(--success)' : 'var(--danger)'};">
+                            ${isIncome ? '+' : '-'}${formatRupiah(trx.amount || 0)}
+                        </span>
+                    </div>
+                `;
+                mobileList.appendChild(card);
+            });
+        }
+
+        // Listener Filter Perusahaan
+        document.getElementById('companyFilter').addEventListener('change', (e) => {
+            currentSelectedCompany = e.target.value;
+            applyFilterAndRender();
+        });
+
+        // Listener Search Input
+        document.getElementById('searchInput').addEventListener('input', () => {
+            applyFilterAndRender();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            listenToTransactions();
+        });
+    </script>
+</body>
+</html>
