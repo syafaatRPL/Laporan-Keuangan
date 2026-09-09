@@ -160,9 +160,9 @@
             <button class="sidebar-close-btn" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <ul class="sidebar-menu">
-            <li><a href="index.html" class="active"><i class="fa-solid fa-house"></i> Dashboard</a></li>
-            <li><a href="perusahaan.html"><i class="fa-solid fa-building"></i> Data Perusahaan</a></li>
-            <li><a href="admin.html"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</a></li>
+            <li><a href="https://kasfaimid.my.id" class="active"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li><a href="https://kasfaimid.my.id"><i class="fa-solid fa-building"></i> Data Perusahaan</a></li>
+            <li><a href="https://admin.kasfaimid.my.id/Dashboard-Admin/index.html"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</a></li>
         </ul>
         <div class="user-profile">
             <div class="user-avatar">AD</div>
@@ -410,6 +410,11 @@
             updateDashboard(filtered);
         }
 
+        function isIncomeTransaction(trx) {
+            const type = String(trx?.type || '').trim().toLowerCase();
+            return ['debit', 'masuk', 'in', 'pemasukan', 'income', 'pendapatan'].includes(type);
+        }
+
         function updateDashboard(transactions) {
             let totalIncome = 0;
             let totalExpense = 0;
@@ -419,8 +424,7 @@
 
             transactions.forEach(trx => {
                 const amount = Number(trx.amount) || 0;
-                const type = (trx.type || '').toLowerCase();
-                const isIncome = type === 'in' || type === 'masuk' || type === 'pemasukan';
+                const isIncome = isIncomeTransaction(trx);
                 
                 if (isIncome) {
                     totalIncome += amount;
@@ -473,8 +477,7 @@
             mobileList.innerHTML = '';
 
             transactions.forEach(trx => {
-                const type = (trx.type || '').toLowerCase();
-                const isIncome = type === 'in' || type === 'masuk' || type === 'pemasukan';
+                const isIncome = isIncomeTransaction(trx);
                 const status = trx.status || 'Selesai';
 
                 const badgeTypeClass = isIncome ? 'badge-success' : 'badge-danger';
