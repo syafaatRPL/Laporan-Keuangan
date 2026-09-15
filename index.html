@@ -580,13 +580,6 @@
             </div>
         </section>
 
-        <section class="card table-card" style="margin-bottom: 24px;">
-            <div class="table-header">
-                <h3>Saldo per Kategori</h3>
-            </div>
-            <div id="categorySummaryGrid" class="category-summary-grid"></div>
-        </section>
-
         <!-- TRANSACTION SECTION -->
         <section class="card table-card">
             <div class="table-header">
@@ -857,53 +850,6 @@
             closeCategoryModal();
         }
 
-        function renderCategorySummary(transactions) {
-            const categoryTotals = {};
-
-            transactions.forEach(trx => {
-                const category = String(trx.category || '').trim();
-                if (!category) return;
-
-                const amount = Number(trx.amount) || 0;
-                const signedAmount = isIncomeTransaction(trx) ? amount : -amount;
-                categoryTotals[category] = (categoryTotals[category] || 0) + signedAmount;
-            });
-
-            const sortedCategories = Object.entries(categoryTotals)
-                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-
-            const container = document.getElementById('categorySummaryGrid');
-            const activeCategory = document.getElementById('searchInput').value.trim();
-
-            if (!sortedCategories.length) {
-                container.innerHTML = '<div class="empty-state">Belum ada saldo per kategori.</div>';
-                return;
-            }
-
-            container.innerHTML = sortedCategories.map(([category, total]) => {
-                const group = getCategoryGroup(category);
-                const positive = total >= 0;
-                const isActive = activeCategory && activeCategory.toLowerCase() === category.toLowerCase();
-                return `
-                    <button type="button" class="category-balance-card ${isActive ? 'active' : ''}" data-category="${category}" tabindex="0" aria-label="Saring transaksi kategori ${category}">
-                        <span class="group-tag">${group}</span>
-                        <span class="category-name">${category}</span>
-                        <span class="category-amount ${positive ? 'positive' : 'negative'}">${formatRupiah(total)}</span>
-                    </button>
-                `;
-            }).join('');
-
-            container.querySelectorAll('.category-balance-card').forEach(card => {
-                card.addEventListener('click', () => openCategoryDetails(card.dataset.category));
-                card.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openCategoryDetails(card.dataset.category);
-                    }
-                });
-            });
-        }
-
         function updateDashboard(transactions) {
             let totalIncome = 0;
             let totalExpense = 0;
@@ -949,7 +895,6 @@
             expenseCategoryChart.data.datasets[0].data = categoryData.length ? categoryData : [1];
             expenseCategoryChart.update();
 
-            renderCategorySummary(transactions);
             renderTableAndCards(transactions);
         }
 
