@@ -1,1 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laporan Keuangan / Neraca</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0f172a;
+            --primary-soft: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f4f8ff;
+            --card: #fff;
+            --line: #e2e8f0;
+            --muted: #64748b;
+            --shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            --radius: 18px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(180deg, #f7fafc 0%, #eef4f8 100%);
+            color: var(--primary);
+        }
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 18px 60px;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .title h1 {
+            margin: 0;
+            font-size: clamp(1.4rem, 2vw, 2rem);
+        }
+        .title p {
+            margin: 6px 0 0;
+            color: var(--muted);
+        }
+        .btn {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card);
+            color: var(--primary);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-weight: 700;
+            box-shadow: var(--shadow);
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .report-head {
+            padding: 24px 20px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .company-name {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 2px;
+        }
+        .report-sub {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+        .company-filter {
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 0.8rem;
+            color: var(--primary);
+            outline: none;
+            min-width: 200px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            padding: 0 20px 18px;
+        }
+        .metric {
+            background: #f8fafc;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 16px;
+        }
+        .metric-label {
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            margin-top: 8px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .metric-value.blue { color: var(--primary-soft); }
+        .metric-value.green { color: var(--success); }
+        .metric-value.red { color: var(--danger); }
+        .report-body {
+            padding: 0 20px 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+        }
+        th, td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+        }
+        th {
+            background: #f8fafc;
+            color: var(--muted);
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .amount {
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .amount.positive { color: var(--success); }
+        .amount.negative { color: var(--danger); }
+        .amount.net { color: var(--primary-soft); }
+        .empty {
+            text-align: center;
+            padding: 22px;
+            color: var(--muted);
+        }
+        @media (max-width: 720px) {
+            .wrap { padding: 18px 12px 40px; }
+            table { min-width: 620px; }
+            .report-body { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="topbar">
+            <div class="title">
+                <h1>Laporan Keuangan / Neraca</h1>
+                <p id="periodText">Periode: Memuat...</p>
+            </div>
+            <a href="index.html" class="btn"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+        </div>
 
+        <section class="card">
+            <div class="report-head">
+                <div>
+                    <div class="company-name" id="companyNameLabel">Semua Perusahaan</div>
+                    <div class="report-sub">Posisi aset, kewajiban, dan ekuitas</div>
+                </div>
+                <select id="companyFilter" class="company-filter" aria-label="Filter perusahaan">
+                    <option value="ALL">Semua Perusahaan</option>
+                </select>
+            </div>
+
+            <div class="summary-grid">
+                <div class="metric">
+                    <div class="metric-label">Total Aset</div>
+                    <div class="metric-value blue" id="totalAsset">Rp 0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Kewajiban</div>
+                    <div class="metric-value red" id="totalLiability">Rp 0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Ekuitas</div>
+                    <div class="metric-value green" id="totalEquity">Rp 0</div>
+                </div>
+            </div>
+
+            <div class="report-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kelompok</th>
+                            <th>Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDun1SSeSjVe8ztFl8P_TzBXhfUYk1K7FM",
+            authDomain: "laporan-19814.firebaseapp.com",
+            projectId: "laporan-19814",
+            storageBucket: "laporan-19814.firebasestorage.app",
+            messagingSenderId: "420276873621",
+            appId: "1:420276873621:web:5f0daeb7d99961218fee9c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        let allTransactions = [];
+        let selectedCompany = 'ALL';
+
+        function formatRupiah(value) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value || 0));
+        }
+
+        function normalizeType(type) {
+            const t = String(type || '').trim().toLowerCase();
+            if (['masuk', 'in', 'debit', 'pemasukan', 'income', 'pendapatan'].includes(t)) return 'Masuk';
+            return 'Keluar';
+        }
+
+        function setPeriodText() {
+            const now = new Date();
+            document.getElementById('periodText').textContent = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+        }
+
+        function getCategoryTotal(transactions, matcher, includeIncome = true) {
+            return transactions.reduce((total, trx) => {
+                const category = String(trx.category || '').trim();
+                const desc = String(trx.description || '').trim();
+                if (!matcher(category, desc)) return total;
+                const amount = Number(trx.amount || 0);
+                const type = normalizeType(trx.type);
+                if (includeIncome && type === 'Masuk') return total + amount;
+                if (!includeIncome && type === 'Keluar') return total + amount;
+                return total;
+            }, 0);
+        }
+
+        function populateCompanyFilter(transactions) {
+            const select = document.getElementById('companyFilter');
+            const companies = [...new Set(transactions.filter(t => t.companyName).map(t => t.companyName))].sort();
+            const previous = selectedCompany;
+            select.innerHTML = '<option value="ALL">Semua Perusahaan</option>';
+
+            companies.forEach((company) => {
+                const option = document.createElement('option');
+                option.value = company;
+                option.textContent = company;
+                select.appendChild(option);
+            });
+
+            if (companies.includes(previous)) {
+                selectedCompany = previous;
+            } else {
+                selectedCompany = 'ALL';
+            }
+
+            select.value = selectedCompany;
+        }
+
+        function renderReport(transactions) {
+            const filteredTransactions = selectedCompany === 'ALL'
+                ? transactions
+                : transactions.filter((trx) => String(trx.companyName || '').trim() === selectedCompany);
+
+            const assetNames = ['kas bank', 'piutang usaha', 'perlengkapan', 'peralatan', 'kas', 'aset'];
+            const liabilityNames = ['hutang usaha', 'utang bank', 'hutang'];
+
+            const assets = filteredTransactions.reduce((total, trx) => {
+                const category = String(trx.category || '').trim().toLowerCase();
+                const desc = String(trx.description || '').trim().toLowerCase();
+                const match = assetNames.some(name => category.includes(name) || desc.includes(name));
+                if (!match) return total;
+                const amount = Number(trx.amount || 0);
+                return total + amount;
+            }, 0);
+
+            const liabilities = filteredTransactions.reduce((total, trx) => {
+                const category = String(trx.category || '').trim().toLowerCase();
+                const desc = String(trx.description || '').trim().toLowerCase();
+                const match = liabilityNames.some(name => category.includes(name) || desc.includes(name));
+                if (!match) return total;
+                const amount = Number(trx.amount || 0);
+                return total + amount;
+            }, 0);
+
+            const income = filteredTransactions.reduce((total, trx) => normalizeType(trx.type) === 'Masuk' && !/modal|setor|prive|saldo/i.test(String(trx.category || '') + ' ' + String(trx.description || '')) ? total + Number(trx.amount || 0) : total, 0);
+            const expense = filteredTransactions.reduce((total, trx) => normalizeType(trx.type) === 'Keluar' && !/modal|setor|prive|saldo/i.test(String(trx.category || '') + ' ' + String(trx.description || '')) ? total + Number(trx.amount || 0) : total, 0);
+            const equity = assets - liabilities;
+
+            document.getElementById('companyNameLabel').textContent = selectedCompany === 'ALL' ? 'Semua Perusahaan' : selectedCompany;
+            document.getElementById('totalAsset').textContent = formatRupiah(assets || 0);
+            document.getElementById('totalLiability').textContent = formatRupiah(liabilities || 0);
+            document.getElementById('totalEquity').textContent = formatRupiah(equity || 0);
+
+            const rows = [
+                { label: 'Aset', value: formatRupiah(assets), type: 'net' },
+                { label: 'Kewajiban', value: formatRupiah(liabilities), type: 'negative' },
+                { label: 'Ekuitas', value: formatRupiah(equity), type: 'positive' },
+                { label: 'Laba Bersih', value: formatRupiah(income - expense), type: 'positive' }
+            ];
+
+            document.getElementById('reportTableBody').innerHTML = rows.map(row => `
+                <tr>
+                    <td>${row.label}</td>
+                    <td class="amount ${row.type}">${row.value}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('companyFilter').addEventListener('change', (event) => {
+            selectedCompany = event.target.value;
+            renderReport(allTransactions);
+        });
+
+        onSnapshot(query(collection(db, 'transactions'), orderBy('date', 'desc')), (snapshot) => {
+            allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            populateCompanyFilter(allTransactions);
+            renderReport(allTransactions);
+        }, (error) => {
+            console.error('Firestore error:', error);
+            document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="2" class="empty">Gagal memuat data dari Firestore.</td></tr>';
+        });
+
+        setPeriodText();
+    </script>
+</body>
+</html>
