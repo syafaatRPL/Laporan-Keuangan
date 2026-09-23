@@ -682,16 +682,82 @@
                 data: {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
                     datasets: [
-                        { label: 'Pemasukan', data: Array(12).fill(0), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 },
-                        { label: 'Pengeluaran', data: Array(12).fill(0), borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)', fill: true, tension: 0.3 }
+                        {
+                            label: 'Net Cash Flow',
+                            data: Array(12).fill(0),
+                            borderColor: '#2563eb',
+                            backgroundColor: (context) => {
+                                const chart = context.chart;
+                                const {ctx, chartArea} = chart;
+                                if (!chartArea) return 'rgba(37, 99, 235, 0.12)';
+                                const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                                gradient.addColorStop(0, 'rgba(37, 99, 235, 0.26)');
+                                gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
+                                return gradient;
+                            },
+                            fill: true,
+                            tension: 0.45,
+                            cubicInterpolationMode: 'monotone',
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            pointHitRadius: 10,
+                            borderWidth: 3,
+                            borderCapStyle: 'round',
+                            borderJoinStyle: 'round',
+                            segment: {
+                                borderColor: (ctx) => {
+                                    const value = ctx.p1?.parsed?.y ?? ctx.p0?.parsed?.y ?? 0;
+                                    const prev = ctx.p0?.parsed?.y ?? value;
+                                    return value >= prev ? '#16a34a' : '#ef4444';
+                                },
+                                borderWidth: 3
+                            },
+                            spanGaps: true
+                        }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 220 },
-                    plugins: { legend: { position: 'top', display: true } },
-                    scales: { y: { ticks: { callback: (val) => 'Rp ' + (val / 1000000).toFixed(0) + ' Jt' } } }
+                    animation: { duration: 350 },
+                    interaction: { mode: 'nearest', intersect: false },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            display: true,
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                color: '#334155'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                            titleColor: '#fff',
+                            bodyColor: '#e2e8f0',
+                            borderColor: 'rgba(148, 163, 184, 0.22)',
+                            borderWidth: 1,
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => 'Net Cash Flow: ' + formatRupiah(context.parsed.y)
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: '#64748b' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                            border: { display: false },
+                            ticks: {
+                                color: '#64748b',
+                                callback: (val) => 'Rp ' + (val / 1000000).toFixed(0) + ' Jt'
+                            }
+                        }
+                    }
                 }
             });
 
@@ -843,13 +909,13 @@
         function updateDashboard(transactions) {
             let totalIncome = 0;
             let totalExpense = 0;
-            let monthlyIncome = Array(12).fill(0);
-            let monthlyExpense = Array(12).fill(0);
+            let monthlyNetFlow = Array(12).fill(0);
             let expenseCategories = {};
 
             transactions.forEach(trx => {
                 const amount = Number(trx.amount) || 0;
                 const isIncome = isIncomeTransaction(trx);
+                const monthDelta = isIncome ? amount : -amount;
                 
                 if (isIncome) {
                     totalIncome += amount;
@@ -862,8 +928,7 @@
                 if (trx.date) {
                     const dateObj = trx.date.seconds ? new Date(trx.date.seconds * 1000) : new Date(trx.date);
                     const monthIndex = dateObj.getMonth();
-                    if (isIncome) monthlyIncome[monthIndex] += amount;
-                    else monthlyExpense[monthIndex] += amount;
+                    monthlyNetFlow[monthIndex] += monthDelta;
                 }
             });
 
@@ -875,8 +940,7 @@
             const now = new Date();
             document.getElementById('periodText').innerText = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
 
-            cashFlowChart.data.datasets[0].data = monthlyIncome;
-            cashFlowChart.data.datasets[1].data = monthlyExpense;
+            cashFlowChart.data.datasets[0].data = monthlyNetFlow;
             cashFlowChart.update();
 
             const categoryLabels = Object.keys(expenseCategories);
