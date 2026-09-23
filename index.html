@@ -980,8 +980,10 @@
                 else if (status.toLowerCase() === 'batal') badgeStatusClass = 'badge-danger';
 
                 const tr = document.createElement('tr');
+                const displayId = (trx.transactionId && String(trx.transactionId).trim()) ? `#${String(trx.transactionId).toUpperCase()}` : '';
+                const idCell = displayId ? `<td><strong>${displayId}</strong></td>` : `<td></td>`;
                 tr.innerHTML = `
-                    <td><strong>#${trx.code || trx.id.substring(0, 6).toUpperCase()}</strong></td>
+                    ${idCell}
                     <td><strong>${trx.companyName || '-'}</strong></td>
                     <td>${formatDate(trx.date)}</td>
                     <td>${trx.description || '-'}</td>
