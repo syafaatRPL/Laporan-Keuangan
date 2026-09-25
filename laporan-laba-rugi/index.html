@@ -172,7 +172,7 @@
                 <h1>Laporan Laba Rugi</h1>
                 <p id="periodText">Periode: Memuat...</p>
             </div>
-            <a href="https://kasfaimid.my.id" class="btn"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+            <a href="index.html" class="btn"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
         </div>
 
         <section class="card">
@@ -228,10 +228,20 @@
             appId: "1:420276873621:web:5f0daeb7d99961218fee9c"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        let app = null;
+        let db = null;
         let allTransactions = [];
         let selectedCompany = 'ALL';
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (error) {
+            console.error('Firebase init failed:', error);
+            if (document.body) {
+                document.body.insertAdjacentHTML('beforeend', '<div style="padding:16px;color:#b91c1c;">Firebase gagal diinisialisasi. Periksa konfigurasi proyek.</div>');
+            }
+        }
 
         function formatRupiah(value) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value || 0));
@@ -246,6 +256,13 @@
         function setPeriodText() {
             const now = new Date();
             document.getElementById('periodText').textContent = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+        }
+
+        function getTransactionDateValue(trx) {
+            if (!trx || !trx.date) return null;
+            const dateValue = trx.date.seconds ? new Date(trx.date.seconds * 1000) : new Date(trx.date);
+            if (Number.isNaN(dateValue.getTime())) return null;
+            return dateValue;
         }
 
         function createTableRows(rows) {
@@ -288,34 +305,76 @@
                 ? transactions
                 : transactions.filter((trx) => String(trx.companyName || '').trim() === selectedCompany);
 
-            let income = 0;
-            let expense = 0;
+            const dateValues = filteredTransactions
+                .map(getTransactionDateValue)
+                .filter(Boolean)
+                .sort((a, b) => a - b);
 
-            const rows = [];
+            const periodStart = dateValues.length ? dateValues[0] : new Date();
+            const periodEnd = dateValues.length ? dateValues[dateValues.length - 1] : new Date();
+            const dateLabel = `${periodStart.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+
+            let revenue = 0;
+            let costOfSale = 0;
+            let operationalExpense = 0;
+            let otherIncome = 0;
+            let otherExpense = 0;
 
             filteredTransactions.forEach((trx) => {
                 const amount = Number(trx.amount || 0);
                 const type = normalizeType(trx.type);
-                const category = String(trx.category || '').trim();
-                const isCapital = /modal|setor|prive|saldo/i.test(category) || /modal|setor|prive|saldo/i.test(String(trx.description || ''));
+                const category = String(trx.category || '').trim().toLowerCase();
+                const description = String(trx.description || '').trim().toLowerCase();
+                const text = `${category} ${description}`;
+                const isCapital = /modal|setor|prive|saldo/i.test(text);
 
                 if (type === 'Masuk' && !isCapital) {
-                    income += amount;
+                    if (/hpp|cost of sale|cogs|harga pokok|produksi|pembelian/.test(text)) {
+                        costOfSale += amount;
+                    } else if (/pendapatan|penjualan|jualan|service|revenue|income/i.test(text)) {
+                        revenue += amount;
+                    } else {
+                        revenue += amount;
+                    }
                 }
 
                 if (type === 'Keluar' && !isCapital) {
-                    expense += amount;
+                    if (/hpp|cost of sale|cogs|harga pokok|produksi|pembelian/.test(text)) {
+                        costOfSale += amount;
+                    } else if (/sewa|beban|operasional|opsi|gaji|listrik|telepon|internet|transport|marketing|admin/.test(text)) {
+                        operationalExpense += amount;
+                    } else if (/pendapatan lain|other income|income lain|keuntungan/.test(text)) {
+                        otherIncome += amount;
+                    } else {
+                        otherExpense += amount;
+                    }
                 }
             });
 
-            rows.push({ label: 'Pendapatan', value: formatRupiah(income), type: 'income' });
-            rows.push({ label: 'Beban', value: formatRupiah(expense), type: 'expense' });
-            rows.push({ label: 'Laba Bersih', value: formatRupiah(income - expense), type: 'net' });
+            const totalRevenue = revenue;
+            const totalCostOfSale = costOfSale;
+            const grossProfit = totalRevenue - totalCostOfSale;
+            const totalOperationalExpense = operationalExpense;
+            const operatingProfit = grossProfit - totalOperationalExpense;
+
+            const rows = [
+                { label: 'Tanggal', value: dateLabel, type: 'net' },
+                { label: 'Revenue', value: formatRupiah(revenue), type: 'income' },
+                { label: 'Total Revenue', value: formatRupiah(totalRevenue), type: 'income' },
+                { label: 'Cost of Sale', value: formatRupiah(costOfSale), type: 'expense' },
+                { label: 'Total Cost of Sale', value: formatRupiah(totalCostOfSale), type: 'expense' },
+                { label: 'Gross Profit', value: formatRupiah(grossProfit), type: grossProfit >= 0 ? 'income' : 'expense' },
+                { label: 'Operational Expense', value: formatRupiah(operationalExpense), type: 'expense' },
+                { label: 'Total Operational Expense', value: formatRupiah(totalOperationalExpense), type: 'expense' },
+                { label: 'Operating Profit', value: formatRupiah(operatingProfit), type: operatingProfit >= 0 ? 'income' : 'expense' },
+                { label: 'Other Income', value: formatRupiah(otherIncome), type: 'income' },
+                { label: 'Other Expense', value: formatRupiah(otherExpense), type: 'expense' }
+            ];
 
             document.getElementById('companyNameLabel').textContent = selectedCompany === 'ALL' ? 'Semua Perusahaan' : selectedCompany;
-            document.getElementById('incomeTotal').textContent = formatRupiah(income);
-            document.getElementById('expenseTotal').textContent = formatRupiah(expense);
-            document.getElementById('netProfit').textContent = formatRupiah(income - expense);
+            document.getElementById('incomeTotal').textContent = formatRupiah(revenue + otherIncome);
+            document.getElementById('expenseTotal').textContent = formatRupiah(costOfSale + operationalExpense + otherExpense);
+            document.getElementById('netProfit').textContent = formatRupiah((revenue + otherIncome) - (costOfSale + operationalExpense + otherExpense));
             document.getElementById('reportTableBody').innerHTML = createTableRows(rows);
         }
 
@@ -324,14 +383,18 @@
             renderReport(allTransactions);
         });
 
-        onSnapshot(query(collection(db, 'transactions'), orderBy('date', 'desc')), (snapshot) => {
-            allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            populateCompanyFilter(allTransactions);
-            renderReport(allTransactions);
-        }, (error) => {
-            console.error('Firestore error:', error);
-            document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="2" class="empty">Gagal memuat data dari Firestore.</td></tr>';
-        });
+        if (!db) {
+            document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="2" class="empty">Firebase belum aktif. Periksa konfigurasi proyek.</td></tr>';
+        } else {
+            onSnapshot(query(collection(db, 'transactions'), orderBy('date', 'desc')), (snapshot) => {
+                allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateCompanyFilter(allTransactions);
+                renderReport(allTransactions);
+            }, (error) => {
+                console.error('Firestore error:', error);
+                document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="2" class="empty">Gagal memuat data dari Firestore.</td></tr>';
+            });
+        }
 
         setPeriodText();
     </script>
