@@ -505,7 +505,24 @@
                 </div>
             </div>
             <div class="header-actions">
-                <!-- Filter Berdasarkan PT -->
+                <select id="monthFilter" class="form-select">
+                    <option value="ALL">-- Semua Bulan --</option>
+                    <option value="0">Januari</option>
+                    <option value="1">Februari</option>
+                    <option value="2">Maret</option>
+                    <option value="3">April</option>
+                    <option value="4">Mei</option>
+                    <option value="5">Juni</option>
+                    <option value="6">Juli</option>
+                    <option value="7">Agustus</option>
+                    <option value="8">September</option>
+                    <option value="9">Oktober</option>
+                    <option value="10">November</option>
+                    <option value="11">Desember</option>
+                </select>
+                <select id="yearFilter" class="form-select">
+                    <option value="ALL">-- Semua Tahun --</option>
+                </select>
                 <select id="companyFilter" class="form-select">
                     <option value="ALL">-- Semua PT / Perusahaan --</option>
                 </select>
@@ -799,6 +816,50 @@
             return [...(transactions || [])].sort((a, b) => getTransactionCreatedAtValue(a) - getTransactionCreatedAtValue(b));
         }
 
+        function getTransactionDateObject(trx) {
+            if (!trx) return null;
+
+            const rawDate = trx.date || trx.tanggal || null;
+            if (!rawDate) return null;
+
+            if (rawDate.seconds) {
+                return new Date(rawDate.seconds * 1000);
+            }
+
+            const parsed = new Date(rawDate);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function populateYearFilter(transactions) {
+            const select = document.getElementById('yearFilter');
+            if (!select) return;
+
+            const years = new Set();
+            transactions.forEach(trx => {
+                const dateObj = getTransactionDateObject(trx);
+                if (dateObj) {
+                    years.add(String(dateObj.getFullYear()));
+                }
+            });
+
+            const previousValue = select.value;
+            const sortedYears = [...years].sort((a, b) => Number(b) - Number(a));
+            select.innerHTML = '<option value="ALL">-- Semua Tahun --</option>';
+
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                select.appendChild(option);
+            });
+
+            if (previousValue && previousValue !== 'ALL' && sortedYears.includes(previousValue)) {
+                select.value = previousValue;
+            } else {
+                select.value = 'ALL';
+            }
+        }
+
         function populateCompanyFilter(transactions) {
             const select = document.getElementById('companyFilter');
             const companies = new Set();
@@ -832,6 +893,7 @@
 
                 allTransactions = sortTransactionsByOldestFirst(allTransactions);
                 populateCompanyFilter(allTransactions);
+                populateYearFilter(allTransactions);
                 applyFilterAndRender();
             }, (error) => {
                 console.error("Gagal mengambil data dari Firebase: ", error);
@@ -840,8 +902,23 @@
 
         function applyFilterAndRender() {
             let filtered = allTransactions;
+
             if (currentSelectedCompany !== 'ALL') {
-                filtered = allTransactions.filter(t => t.companyName === currentSelectedCompany);
+                filtered = filtered.filter(t => t.companyName === currentSelectedCompany);
+            }
+
+            const selectedMonth = document.getElementById('monthFilter')?.value || 'ALL';
+            const selectedYear = document.getElementById('yearFilter')?.value || 'ALL';
+
+            if (selectedMonth !== 'ALL' || selectedYear !== 'ALL') {
+                filtered = filtered.filter(trx => {
+                    const dateObj = getTransactionDateObject(trx);
+                    if (!dateObj) return false;
+
+                    const matchesMonth = selectedMonth === 'ALL' || dateObj.getMonth() === Number(selectedMonth);
+                    const matchesYear = selectedYear === 'ALL' || String(dateObj.getFullYear()) === String(selectedYear);
+                    return matchesMonth && matchesYear;
+                });
             }
 
             const searchKey = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -862,6 +939,8 @@
             searchInput.value = '';
             currentSelectedCompany = 'ALL';
             document.getElementById('companyFilter').value = 'ALL';
+            document.getElementById('monthFilter').value = 'ALL';
+            document.getElementById('yearFilter').value = 'ALL';
             document.querySelectorAll('.filter-category-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.category === '');
             });
@@ -964,8 +1043,20 @@
             document.getElementById('netProfit').innerText = formatRupiah(totalIncome - totalExpense);
             document.getElementById('totalCount').innerText = sortedTransactions.length;
 
-            const now = new Date();
-            document.getElementById('periodText').innerText = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+            const selectedMonth = document.getElementById('monthFilter')?.value || 'ALL';
+            const selectedYear = document.getElementById('yearFilter')?.value || 'ALL';
+            const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+            if (selectedMonth !== 'ALL' && selectedYear !== 'ALL') {
+                document.getElementById('periodText').innerText = `Periode: ${monthNames[Number(selectedMonth)]} ${selectedYear}`;
+            } else if (selectedMonth !== 'ALL') {
+                document.getElementById('periodText').innerText = `Periode: ${monthNames[Number(selectedMonth)]}`;
+            } else if (selectedYear !== 'ALL') {
+                document.getElementById('periodText').innerText = `Periode: ${selectedYear}`;
+            } else {
+                const now = new Date();
+                document.getElementById('periodText').innerText = `Periode: ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+            }
 
             cashFlowChart.data.datasets[0].data = monthlyNetFlow;
             cashFlowChart.update();
@@ -1041,6 +1132,14 @@
         // Listener Filter Perusahaan
         document.getElementById('companyFilter').addEventListener('change', (e) => {
             currentSelectedCompany = e.target.value;
+            applyFilterAndRender();
+        });
+
+        document.getElementById('monthFilter').addEventListener('change', () => {
+            applyFilterAndRender();
+        });
+
+        document.getElementById('yearFilter').addEventListener('change', () => {
             applyFilterAndRender();
         });
 
